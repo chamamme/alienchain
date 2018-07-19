@@ -26,3 +26,8 @@ We have a simple chat app you will love to play around with
     ```
 
 The application should be up and running at [http://localhost:5000](http://localhost:5000).
+# TODO 
+ - Adding tags to transactions for easy grouping :heavy_check_mark:
+ - Implement logging :heavy_check_mark:
+ - Integrate Mongo DB
+ - Create SDKs
