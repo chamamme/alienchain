@@ -3,10 +3,12 @@ from hashlib import sha256
 import json
 import time
 
-from flask import Flask, request
+import pymongo as pymongo
+from flask import Flask, request, Response
 import requests
 
 from server.transaction import Transaction
+from tools import log
 
 
 class Block:
@@ -28,11 +30,24 @@ class Block:
 class Blockchain:
     # difficulty of our PoW algorithm. ie the number of preceding zeros
     difficulty = 2
+    dbClient = None
+    db = None
 
     def __init__(self):
+        log("Initializing Blockchain","info")
+        self.startDatabase()
         self.unconfirmed_transactions = []
         self.chain = []
         self.create_genesis_block()
+
+    def startDatabase(self):
+        try:
+            self.dbClient = pymongo.MongoClient("localhost",27017)
+            self.db = self.dbClient.alienChain
+            log("AlienChain database started")
+        except:
+            log("Failed to star database. Transactions will not be stored permanently",'warning')
+
 
     def create_genesis_block(self):
         """
@@ -43,6 +58,7 @@ class Blockchain:
         genesis_block = Block(0, [], time.time(), "0")
         genesis_block.hash = genesis_block.compute_hash()
         self.chain.append(genesis_block)
+        log("Genesis block created: {}".format(json.dumps(genesis_block.__dict__)))
 
     @property
     def last_block(self):
@@ -66,6 +82,10 @@ class Blockchain:
 
         block.hash = proof
         self.chain.append(block)
+        # insert into db
+        block_json = json.dumps(block)
+        self.db.Blocks.insert(block_json)
+        log("Block #{} created {} ".format(block.index,block_json))
         return True
 
     def proof_of_work(self, block):
@@ -83,7 +103,11 @@ class Blockchain:
         return computed_hash
 
     def add_new_transaction(self, transaction):
-        self.unconfirmed_transactions.append(transaction)
+        try:
+            self.unconfirmed_transactions.append(transaction)
+            log("Transaction received")
+        except:
+            log("Transaction failed")
 
     @classmethod
     def is_valid_proof(cls, block, block_hash):
@@ -136,6 +160,7 @@ class Blockchain:
         self.unconfirmed_transactions = []
         # announce it to the network
         announce_new_block(new_block)
+
         return new_block.index
 
     def miner(self):
@@ -167,15 +192,16 @@ peers = set()
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
     tx_data = request.get_json()
-    required_fields = ["author", "content"]
+    required_fields = ["data", "signer","tag"]
 
     for field in required_fields:
         if not tx_data.get(field):
-            return "Invlaid transaction data", 404
+            return "Invalid transaction data", 404
 
     tx = Transaction(
-        data=tx_data,
-        signer=""
+        data=tx_data['data'],
+        signer=tx_data['signer'],
+        tag=tx_data['tag']
     )
     blockchain.add_new_transaction(tx.__dict__)
 
@@ -192,7 +218,8 @@ def get_chain():
     chain_data = []
     for block in blockchain.chain:
         chain_data.append(block.__dict__)
-    return json.dumps({"length": len(chain_data), "chain": chain_data})
+    result = json.dumps({"length": len(chain_data), "chain": chain_data})
+    return Response(result, mimetype='application/json')
 
 
 # endpoint to request the node to mine the unconfirmed

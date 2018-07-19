@@ -5,16 +5,16 @@ from _sha256 import sha256
 
 class Transaction:
 
-    def __init__(self, data, signer):
+    def __init__(self, data, signer, tag=None):
         """
-
         :param data:
         :param signer: the public key of the sender
         """
         self.data = data
-        self.signer = signer
+        self.signer = sha256(signer.encode()).hexdigest()
         self.timestamp = time.time()
         self.hash = self.compute_hash()
+        self.tag = tag
 
     def compute_hash(self):
         """
