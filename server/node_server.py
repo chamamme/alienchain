@@ -30,25 +30,28 @@ class Block:
 class Blockchain:
     # difficulty of our PoW algorithm. ie the number of preceding zeros
     difficulty = 2
-    dbClient = None
+    mongoClient = None
     db = None
 
     def __init__(self):
-        log("Initializing Blockchain","info")
+        log("Initializing Blockchain", "info")
         self.startDatabase()
+        self.loadBlocksFromDB()
         self.unconfirmed_transactions = []
         self.chain = []
         self.create_genesis_block()
 
     def startDatabase(self):
         try:
-            self.dbClient = pymongo.MongoClient("localhost",27017)
-            self.db = self.dbClient.alienChain
+            client = pymongo.MongoClient("localhost", 27017)
+            self.db = client.alien_database
             log("AlienChain database started")
-        except:
-            log("Failed to star database. Transactions will not be stored permanently",'warning')
+        except Exception as e:
+            log("Failed to start database. {}".format(e), 'warning')
 
-
+    def loadBlocksFromDB(self):
+        for block in self.db.blockchain.find():
+            print(block)
     def create_genesis_block(self):
         """
         A function to generate genesis block and appends it to
@@ -83,9 +86,17 @@ class Blockchain:
         block.hash = proof
         self.chain.append(block)
         # insert into db
-        block_json = json.dumps(block)
-        self.db.Blocks.insert(block_json)
-        log("Block #{} created {} ".format(block.index,block_json))
+        try:
+            block_json = json.dumps(block.__dict__)
+            collection = self.db.blockchain
+            id = collection.insert_one(json.loads(block_json)).inserted_id
+            if id:
+                log("DB INSERT SUCCESSFUL")
+        except Exception as e:
+            log("Failed to insert into db: {}".format(e),"warning")
+        if not id:
+            log("failed to insert into db")
+        log("Block #{} created {} ".format(block.index, block_json))
         return True
 
     def proof_of_work(self, block):
@@ -181,7 +192,7 @@ app = Flask(__name__)
 # the node's copy of blockchain
 blockchain = Blockchain()
 # start a mining thread
-start_new_thread(blockchain.miner,())
+start_new_thread(blockchain.miner, ())
 
 # the address to other participating members of the network
 peers = set()
@@ -192,7 +203,7 @@ peers = set()
 @app.route('/new_transaction', methods=['POST'])
 def new_transaction():
     tx_data = request.get_json()
-    required_fields = ["data", "signer","tag"]
+    required_fields = ["data", "signer", "tag"]
 
     for field in required_fields:
         if not tx_data.get(field):
@@ -314,5 +325,3 @@ def announce_new_block(block):
 
 
 app.run(debug=True, port=8000)
-
-
