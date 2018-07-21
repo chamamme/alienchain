@@ -29,5 +29,5 @@ The application should be up and running at [http://localhost:5000](http://local
 # TODO 
  - Adding tags to transactions for easy grouping :heavy_check_mark:
  - Implement logging :heavy_check_mark:
- - Integrate Mongo DB
+ - Integrate Mongo DB :heavy_check_mark:
  - Create SDKs
