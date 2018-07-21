@@ -8,7 +8,7 @@ from flask import Flask, request, Response
 import requests
 
 from server.transaction import Transaction
-from tools import log
+from helpers import log, is_valid_nonce
 
 
 class Block:
@@ -36,10 +36,10 @@ class Blockchain:
     def __init__(self):
         log("Initializing Blockchain", "info")
         self.startDatabase()
-        self.loadBlocksFromDB()
         self.unconfirmed_transactions = []
         self.chain = []
-        self.create_genesis_block()
+        self.loadBlocks()
+        # self.create_genesis_block()
 
     def startDatabase(self):
         try:
@@ -49,9 +49,23 @@ class Blockchain:
         except Exception as e:
             log("Failed to start database. {}".format(e), 'warning')
 
-    def loadBlocksFromDB(self):
-        for block in self.db.blockchain.find():
-            print(block)
+    def loadBlocks(self):
+        try:
+            if self.db.blockchain.count() > 0:
+                for block in self.db.blockchain.find({}, {'_id': 0}):
+                    # block = json.loads(str(block))
+                    block_obj = Block(block['index'], block['transactions'], block['timestamp'], block['previous_hash'])
+                    block_obj.hash = block['hash']
+                    block_obj.nonce = block['nonce']
+                    self.chain.append(block_obj)
+                # check the chains validity
+                if not self.check_chain_validity(self.chain):
+                    raise ValueError("Invalid chain")
+            else:
+                self.create_genesis_block()
+        except Exception as e:
+            log("Failed to load blockchain data: {}".format(e), 'critical')
+
     def create_genesis_block(self):
         """
         A function to generate genesis block and appends it to
@@ -59,8 +73,10 @@ class Blockchain:
         a valid hash.
         """
         genesis_block = Block(0, [], time.time(), "0")
-        genesis_block.hash = genesis_block.compute_hash()
-        self.chain.append(genesis_block)
+        # genesis_block.hash = genesis_block.compute_hash()
+        # self.chain.append(genesis_block)
+        proof = self.proof_of_work(genesis_block)
+        self.add_block(genesis_block, proof)
         log("Genesis block created: {}".format(json.dumps(genesis_block.__dict__)))
 
     @property
@@ -75,7 +91,10 @@ class Blockchain:
         * The previous_hash referred in the block and the hash of latest block
           in the chain match.
         """
-        previous_hash = self.last_block.hash
+        if block.index != 0:
+            previous_hash = self.last_block.hash
+        else:
+            previous_hash = block.previous_hash
 
         if previous_hash != block.previous_hash:
             return False
@@ -93,7 +112,7 @@ class Blockchain:
             if id:
                 log("DB INSERT SUCCESSFUL")
         except Exception as e:
-            log("Failed to insert into db: {}".format(e),"warning")
+            log("Failed to insert into db: {}".format(e), "warning")
         if not id:
             log("failed to insert into db")
         log("Block #{} created {} ".format(block.index, block_json))
@@ -140,7 +159,7 @@ class Blockchain:
             # using `compute_hash` method.
             delattr(block, "hash")
 
-            if not cls.is_valid_proof(block, block.hash) or \
+            if not cls.is_valid_proof(block, block_hash) or \
                     previous_hash != block.previous_hash:
                 result = False
                 break
@@ -191,6 +210,9 @@ app = Flask(__name__)
 
 # the node's copy of blockchain
 blockchain = Blockchain()
+
+# generate genesis block
+# blockchain.create_genesis_block()
 # start a mining thread
 start_new_thread(blockchain.miner, ())
 
