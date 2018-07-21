@@ -43,8 +43,7 @@ def index():
     fetch_posts()
 
     return render_template('index.html',
-                           title='AlienChain Decentralized '
-                                 'content sharing',
+                           title='AlienChain Posts',
                            posts=posts,
                            blocks=blocks,
                            node_address=CONNECTED_NODE_ADDRESS,

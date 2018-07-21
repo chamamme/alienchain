@@ -4,14 +4,35 @@
 {% block content %}
 	<br>
 
-	<center>
-	<form action="/submit" id="textform" method="post">
-	    <textarea name="content" rows="4" cols="50" placeholder="Just write whatever you want to..."></textarea>
-	    <br>
-	    <input type="text" name="author" placeholder="Your name">
-	    <input type="submit" value="Post">
-	</form>
-	</center>
+	<div class="row">
+		<div class="col-md-4">
+			<form class="form" action="/submit" id="textform" method="post">
+				<div class="form-group">
+				<input type="text" class="form-control" name="author" placeholder="Your name">
+				</div>
+				<div class="form-group">
+					<textarea class="form-control" name="content"  placeholder="Whats on your mind..."></textarea>
+				</div>
+				<input class="btn btn-success btn-sm btn-block" type="submit" value="Post">
+			</form>
+		</div>
+		<div class="col-md-8">
+				<div >
+				{% for post in posts %}
+
+					<div class="card">
+
+					  <div class="card-body">
+						<blockquote class="blockquote mb-0">
+						  <p>{{post.data.content}}</p>
+						  <footer class="blockquote-footer">{{post.data.author}} <cite title="Source Title">{{readable_time(post.timestamp)}}</cite></footer>
+						</blockquote>
+					  </div>
+					</div>
+				{% endfor %}
+		</div>
+
+	</div>
 
 	<br>
 	<!--<div class="" style="text-align:center">-->
@@ -23,23 +44,7 @@
 		<!--</a>-->
 	<!--</div>-->
 
-	<div style="margin: 20px;">
 
-    {% for post in posts %}
-    <div class="post_box">
-	   <div class="post_box-header">
-	      <div class="post_box-options"><button class="option-btn">Reply</button></div>
-	      <div style="background: rgb(0, 97, 146) none repeat scroll 0% 0%; box-shadow: rgb(0, 97, 146) 0px 0px 0px 2px;" class="post_box-avatar">{{post.data.author[0]}}</div>
-	      <div class="name-header">{{post.data.author}}</div>
-	      <div class="post_box-subtitle"> Posted at <i>{{readable_time(post.timestamp)}}</i></div>
-	   </div>
-	   <div>
-	      <div class="post_box-body">
-	         <p>{{post.data.content}}</p>
-	      </div>
-	   </div>
-	</div>
-	{% endfor %}
 
 	<style>
 		.post_box {
