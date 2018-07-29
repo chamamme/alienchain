@@ -135,6 +135,7 @@ class Blockchain:
     def add_new_transaction(self, transaction):
         try:
             self.unconfirmed_transactions.append(transaction)
+            return transaction
             log("Transaction received")
         except:
             log("Transaction failed")
@@ -219,31 +220,89 @@ start_new_thread(blockchain.miner, ())
 # the address to other participating members of the network
 peers = set()
 
+@app.route('/transaction/<tx_hash>', methods=['GET'])
+def getTransaction(tx_hash):
+    search_key = {'transactions.hash': tx_hash}
+    block = blockchain.db.blockchain.find_one(search_key, {"_id": 0})
+    # print(list(prev_tx))
+    if block is not None:
+        for tx in block['transactions']:
+            if tx['hash'] == tx_hash:
+                tx['block_index'] = block['index']
+                tx['block_hash'] = block['hash']
+                tx['block_time'] = block['timestamp']
+                ress = json.dumps(tx)
+                return Response(ress, status=200, mimetype='application/json')
+    return Response("No match found", status=404, mimetype='application/json')
 
-# endpoint to submit a new transaction. This will be used by
-# our application to add new data (posts) to the blockchain
-@app.route('/new_transaction', methods=['POST'])
-def new_transaction():
+# endpoint to submit a new transaction
+@app.route('/transaction', methods=['POST'])
+def newTransaction():
+    """
+    # endpoint to submit a new transaction
+    :return:
+    """
     tx_data = request.get_json()
-    required_fields = ["data", "signer", "tag"]
+    required_fields = ["data", "owner", "type"]
 
     for field in required_fields:
         if not tx_data.get(field):
-            return "Invalid transaction data", 404
+            log("Invalid transaction")
+            return "Invalid transaction data", 400
 
     tx = Transaction(
         data=tx_data['data'],
-        signer=tx_data['signer'],
-        tag=tx_data['tag']
+        owner=tx_data['owner'],
+        type=tx_data['type']
     )
-    blockchain.add_new_transaction(tx.__dict__)
+    new_tx = blockchain.add_new_transaction(tx.__dict__)
+    resp = json.dumps(new_tx)
+    return Response(resp, status=200, mimetype="application/json")
 
-    return "Success", 201
+
+# endpoint to update a  transaction/object
+# object_id and data is required
+@app.route('/transaction', methods=['PUT'])
+def updateTransaction():
+    """
+    # endpoint to update a  transaction/object
+    # object_id and data is required
+    :return:
+    """
+    form_data = request.get_json()
+    required_fields = ["object_id", "data"]
+
+    for field in required_fields:
+        if not form_data.get(field):
+            msg = "Invalid transaction: object_id,data fields are required"
+            log(msg)
+            return msg, 400
+    # fetch tx with object_id
+    search_key = {'transactions.object_id': form_data['object_id']}
+    blocks = blockchain.db.blockchain.find(search_key, {"_id": 0, "transactions": 1}) \
+        .sort([{"transactions.timestamp", -1}]) \
+        .limit(1)
+
+    # print(list(prev_tx))
+    if blocks.count() > 0:
+        block = list(blocks)[0]  # get the first block
+        for tx in block['transactions']:
+            if tx['object_id'] == form_data['object_id']:
+                # print(tx)
+                # print(tx['signer'])
+                # print(tx['type'])
+                new_tx = Transaction(
+                    data=form_data['data'],
+                    owner=tx['signer'],
+                    type=tx['type']
+                )
+                new_tx.object_id = tx['object_id']
+                new_tx = blockchain.add_new_transaction(new_tx.__dict__)
+                ress = json.dumps(new_tx)
+    return Response(ress, status=200, mimetype='application/json')
 
 
 # endpoint to return the node's copy of the chain.
-# Our application will be using this endpoint to query
-# all the posts to display.
 @app.route('/chain', methods=['GET'])
 def get_chain():
     # make sure we've the longest chain

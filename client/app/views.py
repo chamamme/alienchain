@@ -49,28 +49,52 @@ def index():
                            node_address=CONNECTED_NODE_ADDRESS,
                            readable_time=timestamp_to_string)
 
+@app.route('/tasks')
+def tasks():
+    fetch_posts()
+
+    return render_template('courier.html',
+                           title='AlienChain Posts',
+                           posts=posts,
+                           blocks=blocks,
+                           node_address=CONNECTED_NODE_ADDRESS,
+                           readable_time=timestamp_to_string)
+
+
+@app.route('/tasks/pickup')
+def pickup():
+   tasks_id = request.args.task_id
+
+
+
 
 @app.route('/submit', methods=['POST'])
 def submit_textarea():
     """
     Endpoint to create a new transaction via our application.
     """
-    post_content = request.form["content"]
-    author = request.form["author"]
+    user = request.form["owner"]
+    title = request.form["title"]
+    location_from = request.form["from"]
+    location_to = request.form["to"]
+    description = request.form["description"]
 
     data = {
-        'author': author,
-        'content': post_content,
+        'user': user,
+        'title': title,
+        'from': location_from,
+        'to': location_to,
+        'description': description,
     }
-    tag = "messages"
+
     post_object = {
         'data': data,
-        'tag': tag,
-        'signer': author
+        'type': "request",
+        'owner': user
     }
 
     # Submit a transaction
-    new_tx_address = "{}/new_transaction".format(CONNECTED_NODE_ADDRESS)
+    new_tx_address = "{}/transaction".format(CONNECTED_NODE_ADDRESS)
 
     requests.post(new_tx_address,
                   json=post_object,

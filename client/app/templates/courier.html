@@ -4,27 +4,6 @@
 {% block content %}
 	<br>
 	<div class="row">
-		<div class="col-md-4">
-			<form class="form" action="/submit" id="textform" method="post">
-				<div class="form-group">
-					<input type="text" class="form-control" name="owner" value="Andrew Chamamme" readonly>
-				</div>
-				<div class="form-group">
-					<input type="text" class="form-control" name="title" placeholder="Request Title">
-				</div>
-				<div class="form-group">
-					<div class="input-group">
-						<input type="text" class="form-control" name="from" placeholder="From">
-						<input type="text" class="form-control" name="to" placeholder="To">
-					</div>
-				</div>
-				<div class="form-group">
-					<textarea class="form-control" name="description"  placeholder="Description"></textarea>
-				</div>
-				<input class="btn btn-success btn-sm btn-block" type="submit" value="Post">
-			</form>
-		</div>
-
 		<div class="col-md-8">
 			<div class="row">
 			{% for post in posts %}
@@ -36,10 +15,11 @@
 						  <div class="col-md-6"><span class="text-muted">from</span> {{post.data.from}}</div>
 						  <div class="col-md-6"> <span class="text-muted">to</span> {{post.data.to}} </div>
 					  </div>
-					<a href="#" class="card-link"><span class="fa fa-trash"></span></a>
 				  </div>
 					<div class="card-footer text-muted">
 						@ {{readable_time(post.timestamp)}}
+						<a href="#" class="card-link">Pickup</a>
+
 					  </div>
 				</div>
 			{% endfor %}
