@@ -89,7 +89,7 @@ def submit_textarea():
 
     post_object = {
         'data': data,
-        'type': "request",
+        'group': 'request',
         'owner': user
     }
 

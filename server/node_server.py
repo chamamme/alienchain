@@ -1,5 +1,5 @@
 from _thread import start_new_thread
-from hashlib import sha256
+from hashlib import  blake2b
 import json
 import time
 
@@ -24,7 +24,7 @@ class Block:
         A function that returns the hash of the block contents.
         """
         block_string = json.dumps(self.__dict__, sort_keys=True)
-        return sha256(block_string.encode()).hexdigest()
+        return blake2b(block_string.encode()).hexdigest()
 
 
 class Blockchain:
@@ -243,7 +243,7 @@ def newTransaction():
     :return:
     """
     tx_data = request.get_json()
-    required_fields = ["data", "owner", "type"]
+    required_fields = ["data", "owner", "group"]
 
     for field in required_fields:
         if not tx_data.get(field):
@@ -253,7 +253,7 @@ def newTransaction():
     tx = Transaction(
         data=tx_data['data'],
         owner=tx_data['owner'],
-        type=tx_data['type']
+        group=tx_data['group']
     )
     new_tx = blockchain.add_new_transaction(tx.__dict__)
     resp = json.dumps(new_tx)
@@ -270,6 +270,7 @@ def updateTransaction():
     :return:
     """
     form_data = request.get_json()
+    log(form_data)
     required_fields = ["object_id", "data"]
 
     for field in required_fields:
@@ -290,17 +291,63 @@ def updateTransaction():
             if tx['object_id'] == form_data['object_id']:
                 # print(tx)
                 # print(tx['signer'])
-                # print(tx['type'])
+                # print(tx['group'])
                 new_tx = Transaction(
                     data=form_data['data'],
                     owner=tx['signer'],
-                    type=tx['type']
+                    group=tx['group']
                 )
                 new_tx.object_id = tx['object_id']
                 new_tx = blockchain.add_new_transaction(new_tx.__dict__)
                 ress = json.dumps(new_tx)
     return Response(ress, status=200, mimetype='application/json')
 
+
+@app.route('/transaction/<float:object_id>', methods=['GET'])
+def getTransactionByObjectId(object_id):
+    search_key = {'transactions.object_id': object_id}
+    blocks = blockchain.db.blockchain.find(search_key, {"_id": 0})
+    block = list(blocks)[-1] if blocks.count() > 0 else []  #get the last/recent block
+    txs = []
+    if block :
+        for tx in block['transactions']:
+            if tx['object_id'] == object_id:
+                tx['block_index'] = block['index']
+                tx['block_hash'] = block['hash']
+                tx['block_time'] = block['timestamp']
+                txs.append(tx)
+        ress = json.dumps(txs[-1]) if len(txs) > 0 else [] #get the last transaction with object_id = object_id
+        return Response(ress, status=200, mimetype='application/json')
+    return Response("No match found", status=404, mimetype='application/json')
+
+# endpoint to return the node's copy of the chain.
+@app.route('/blocks', methods=['GET'])
+def getBlocks():
+    # make sure we've the longest chain
+    consensus()
+    blocks = blockchain.db.blockchain.find({},{'_id':0})
+
+    chain = list(blocks)
+    chain_data = list(reversed(chain))
+    result = json.dumps({"length": blocks.count(), "blocks": chain_data})
+    return Response(result, mimetype='application/json')
+# endpoint to return the node's copy of the chain.
+@app.route('/blocks/<string:hash>', methods=['GET'])
+def getBlock(hash):
+    # make sure we've the longest chain
+    consensus()
+    block = blockchain.db.blockchain.find_one({"hash":hash},{'_id':0})
+    result = json.dumps(block)
+    return Response(result, mimetype='application/json')
+
+# endpoint to return Block using it index.
+@app.route('/blocks/<int:index>', methods=['GET'])
+def getBlockByIndex(index):
+    # make sure we've the longest chain
+    consensus()
+    block = blockchain.db.blockchain.find_one({"index":index},{'_id':0})
+    result = json.dumps(block)
+    return Response(result, mimetype='application/json')
 
 # endpoint to return the node's copy of the chain.
 @app.route('/chain', methods=['GET'])
