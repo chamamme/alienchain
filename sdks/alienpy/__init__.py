@@ -120,10 +120,10 @@ class Transaction:
         }
         req = requests.post(self.endpoint, json=payload, headers={'Content-type': 'application/json'})
         return req.text
-
-    def get(self, tx_hash):
+    @classmethod
+    def get(cls, tx_id):
         # Get the transaction
-        endpoint = "{}/{}".format(self.endpoint, tx_hash)
+        endpoint = "{}/{}".format(cls.endpoint, tx_id)
         req = requests.get(endpoint)
         return req.text
 
@@ -180,24 +180,33 @@ class Block():
         return payload
 
 
-# tx = Transaction()
 
-# tx.owner = "Andrew Chamamme"
-# tx.data = '{"asdfasdf":"asdasd"}'
-# tx.group = 'asdde'
-# # rs = tx.update('1532968669.3950505')
-# tx.create()
-#
-# print(tx.__dict__)
 
-class aliensql():
+class query():
 
     @classmethod
-    def get(self):
+    def get(cls,id):
+        """
+        gets a particular object/transaction
+        :param id:
+        :return:
+        """
+        obj = Transaction.get(tx_id=id)
+        print(obj)
+    def fetch(self):
         pass
 
 
 if __name__ == "__main__":
-    blocks = Block.get()
-    print(blocks)
+    # tx = Transaction()
 
+    # tx.owner = "Andrew Chamamme"
+    # tx.data = '{"asdfasdf":"asdasd"}'
+    # tx.group = 'asdde'
+    # # rs = tx.update('1532968669.3950505')
+    # tx.create()
+    #
+    # print(tx.__dict__)
+    #blocks = Block.get()
+    # print(blocks)
+    query.get(id="59e600c8b3887cc3696c018939ee22a513c86d21153e809a7ca0df3284a3f8f0a74528d209f38c66ca1bdd1b454bb83bf0922b6678c537405548adc76b9f6467")

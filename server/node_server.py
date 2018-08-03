@@ -234,6 +234,22 @@ def getTransaction(tx_hash):
                 ress = json.dumps(tx)
                 return Response(ress, status=200, mimetype='application/json')
     return Response("No match found", status=404, mimetype='application/json')
+@app.route('/transaction/<float:object_id>', methods=['GET'])
+def getTransactionByObjectId(object_id):
+    search_key = {'transactions.object_id': object_id}
+    blocks = blockchain.db.blockchain.find(search_key, {"_id": 0})
+    block = list(blocks)[-1] if blocks.count() > 0 else []  #get the last/recent block
+    txs = []
+    if block :
+        for tx in block['transactions']:
+            if tx['object_id'] == object_id:
+                tx['block_index'] = block['index']
+                tx['block_hash'] = block['hash']
+                tx['block_time'] = block['timestamp']
+                txs.append(tx)
+        ress = json.dumps(txs[-1]) if len(txs) > 0 else [] #get the last transaction with object_id = object_id
+        return Response(ress, status=200, mimetype='application/json')
+    return Response("No match found", status=404, mimetype='application/json')
 
 # endpoint to submit a new transaction
 @app.route('/transaction', methods=['POST'])
@@ -301,24 +317,6 @@ def updateTransaction():
                 new_tx = blockchain.add_new_transaction(new_tx.__dict__)
                 ress = json.dumps(new_tx)
     return Response(ress, status=200, mimetype='application/json')
-
-
-@app.route('/transaction/<float:object_id>', methods=['GET'])
-def getTransactionByObjectId(object_id):
-    search_key = {'transactions.object_id': object_id}
-    blocks = blockchain.db.blockchain.find(search_key, {"_id": 0})
-    block = list(blocks)[-1] if blocks.count() > 0 else []  #get the last/recent block
-    txs = []
-    if block :
-        for tx in block['transactions']:
-            if tx['object_id'] == object_id:
-                tx['block_index'] = block['index']
-                tx['block_hash'] = block['hash']
-                tx['block_time'] = block['timestamp']
-                txs.append(tx)
-        ress = json.dumps(txs[-1]) if len(txs) > 0 else [] #get the last transaction with object_id = object_id
-        return Response(ress, status=200, mimetype='application/json')
-    return Response("No match found", status=404, mimetype='application/json')
 
 # endpoint to return the node's copy of the chain.
 @app.route('/blocks', methods=['GET'])
